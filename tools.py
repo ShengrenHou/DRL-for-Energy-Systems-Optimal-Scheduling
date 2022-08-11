@@ -37,15 +37,8 @@ def optimization_base_result(env,month,day,initial_soc):
             c_para.append(gen_info['c'])
         return p_max,p_min,ramping_up,ramping_down,a_para,b_para,c_para
     p_max,p_min,ramping_up,ramping_down,a_para,b_para,c_para=get_dg_info(parameters=DG_parameters)
-    def get_battery_info(parameters):
-        pass
-
     battery_parameters=env.battery_parameters
-    # NUM_GEN=len(DG_parameters.keys()
     NUM_GEN=len(DG_parameters.keys())
-    # G=DG_parameters.keys()
-    NUM_BATTERY=len(battery_parameters.keys())
-    #battery parameters
     battery_capacity=env.battery.capacity
     battery_efficiency=env.battery.efficiency
 
@@ -79,11 +72,7 @@ def optimization_base_result(env,month,day,initial_soc):
     cost_grid_export=gp.quicksum(grid_energy_export[t]*price[t]*env.sell_coefficient for t in range(period))
 
     m.setObjective((cost_gen+cost_grid_import-cost_grid_export),GRB.MINIMIZE)
-    # m.setObjective(sum(a_para[g]*gen_output[g,t]*gen_output[g,t]+b_para[g]*gen_output[g,t]+c_para[g]for t in range(period) for g in range(NUM_GEN)),GRB.MINIMIZE)
     m.optimize()
-    # # print('%s %g' % (v.varName, v.x))
-    # print('obj=',m.objVal)
-    # #deal with functions and data here
     output_record={'pv':[],'price':[],'load':[],'netload':[],'soc':[],'battery_energy_change':[],'grid_import':[],'grid_export':[],'gen1':[],'gen2':[],'gen3':[],'step_cost':[]}
     for t in range(period):
         gen_cost=sum((on_off[g,t].x*(a_para[g]*gen_output[g,t].x*gen_output[g,t].x+b_para[g]*gen_output[g,t].x+c_para[g])) for g in range(NUM_GEN))
@@ -103,173 +92,6 @@ def optimization_base_result(env,month,day,initial_soc):
         output_record['step_cost'].append(gen_cost+grid_import_cost-grid_export_cost)
 
     output_record_df = pd.DataFrame.from_dict(output_record)
-    return output_record_df
-def pyomo_base_result(env,month,day,initial_soc):
-    #get data from outside 
-    pv_data=env.data_manager.get_series_pv_data(month,day)
-    price_data=env.data_manager.get_series_price_data(month,day)
-    load_data=env.data_manager.get_series_electricity_cons_data(month,day)
-
-    m=ConcreteModel()
-    m.T=Set(initialize=[i for i in range(env.episode_length)])
-    # print(type(m.T.data()))
-    m.G=Set(initialize=env.dg_parameters.keys())
-
-
-    # define parameters for diesel generators,
-    m.pmin=Param(m.G,within=NonNegativeReals,mutable=True)
-    m.pmax=Param(m.G,within=NonNegativeReals,mutable=True)
-    m.ramp_up=Param(m.G,within=NonNegativeReals,mutable=True)
-    m.ramp_down=Param(m.G,within=NonNegativeReals,mutable=True)
-    m.p_initial=Param(m.G,mutable=True,default=0)
-    m.a_factor=Param(m.G,within=NonNegativeReals,mutable=True)
-    m.b_factor=Param(m.G,within=NonNegativeReals,mutable=True)
-    m.c_factor=Param(m.G,within=NonNegativeReals,mutable=True)
-
-    #define parameters for cost and reward calculation 
-    m.gen_cost_coefficient=1# should be used to divid 
-    m.penalty_factor=10# used for penalty surpass exchange ability 
-    m.sell_coefficient=0.5# selling to external grid will only half profits
-
-    ## define parameters for battery[here only used one battery]
-    m.battery_initial_capacity=Param(within=NonNegativeReals,default=initial_soc)
-    m.battery_capacity=Param(within=NonNegativeReals,default=env.battery.capacity)
-    m.battery_exchange_max=Param(within=NonNegativeReals,mutable=True,default=env.battery.max_charge)
-    m.battery_soc_max=Param(within=NonNegativeReals,mutable=True,default=env.battery.max_soc)
-    # print(m.battery_soc_max.value)0.8
-    m.battery_soc_min=Param(within=NonNegativeReals,mutable=True,default=env.battery.min_soc)
-    m.battery_efficiency=Param(within=NonNegativeReals,mutable=True,default=env.battery_parameters['efficiency'])
-    # print(m.battery_efficiency.value)#0.9
-    m.battery_degradation_factor=Param(within=NonNegativeReals,mutable=True,default=env.battery.degradation)
-
-    ## define parameters for grid, here use it to control exchange ability
-
-    # initialize parameters with data given 
-    for g in m.G:
-        m.pmin[g]=env.dg_parameters[g]['power_output_min']
-        m.pmax[g]=env.dg_parameters[g]['power_output_max']
-        m.ramp_up[g]=env.dg_parameters[g]['ramping_up']
-        m.ramp_down[g]=env.dg_parameters[g]['ramping_down']
-        m.a_factor[g]=env.dg_parameters[g]['a']
-        m.b_factor[g]=env.dg_parameters[g]['b']
-        m.c_factor[g]=env.dg_parameters[g]['c']
-    # print(m.p_initial['gen_2'].value) =0 
-
-    '''def variables for generators, battery and grid'''
-    # define decision variables of diesel generators, the real action we could control for such a model 
-    m.gen_output=Var(m.G,m.T,within=NonNegativeReals)
-    # m.on_gen=Var(m.G,m.T,within=Binary)
-
-    # define decision varaible of battery 
-    m.battery_energy_change=Var(m.T,within=Reals,bounds=(-env.battery.max_charge,env.battery.max_charge))#
-    m.soc=Var(m.T,within=NonNegativeReals)
-    # define grid related varaibles
-    # env.grid.exchange_ability=50
-    m.grid_energy_import=Var(m.T,within=Reals,bounds=(-env.grid.exchange_ability,env.grid.exchange_ability),initialize=0)#positive is import,negative is export 
-
-    '''define constrains for gens battery and grid'''
-    ## define constrains for generators 
-    def power_min(m,g,t):
-        return m.gen_output[g,t]>=m.pmin[g]
-    def power_max(m,g,t):
-        return m.gen_output[g,t]<=m.pmax[g]
-
-    def ramp_up(m,g,t):
-        if t==m.T.first():
-            return m.gen_output[g,t]-m.p_initial[g]<=m.ramp_up[g]
-        else:
-            return m.gen_output[g,t]-m.gen_output[g,m.T.prev(t)]<=m.ramp_up[g]
-    def ramp_down(m,g,t):
-        if t==m.T.first():
-            return m.p_initial[g]-m.gen_output[g,t]<=m.ramp_down[g]
-        else: 
-            return m.gen_output[g,m.T.prev(t)]-m.gen_output[g,t]<=m.ramp_down[g]
-    m.con_power_min=Constraint(m.G,m.T,rule=power_min)
-    m.con_power_max=Constraint(m.G,m.T,rule=power_max)
-    m.con_ramping_up=Constraint(m.G,m.T,rule=ramp_up)
-    m.con_ramping_down=Constraint(m.G,m.T,rule=ramp_down)
-
-    ## define constrains for battery
-    def soc_update(m,t):
-        if t==m.T.first():
-            return m.soc[t]==m.battery_initial_capacity+(m.battery_energy_change[t]*m.battery_efficiency)/m.battery_capacity 
-        else:
-            return m.soc[t]==m.soc[m.T.prev(t)]+(m.battery_energy_change[t]*m.battery_efficiency)/m.battery_capacity
-    def soc_max_limit(m,t):
-        return m.soc[t]<=m.battery_soc_max
-    def soc_min_limit(m,t):
-        return m.soc[t]>=m.battery_soc_min
-    m.con_soc_update=Constraint(m.T,rule=soc_update)
-    m.con_soc_max=Constraint(m.T,rule=soc_max_limit)
-    m.con_soc_min=Constraint(m.T,rule=soc_min_limit)
-
-    ## define constrains for balance 
-    def balance(m,t):
-        # generation equals consumption
-        return pv_data[t]+sum(m.gen_output[g,t] for g in m.G)+m.grid_energy_import[t]==load_data[t]+m.battery_energy_change[t]
-    m.con_balance=Constraint(m.T,rule=balance)
-
-
-    def obj_expr(m):
-        '''cost function'''
-        return sum(sum((m.a_factor[g]*(m.gen_output[g,t]**2)+m.b_factor[g]*m.gen_output[g,t]+m.c_factor[g] for g in m.G)*m.gen_cost_coefficient)
-        +m.battery_energy_change[t]**2*m.battery_degradation_factor
-        +m.grid_energy_import[t]*price_data[t]for t in m.T)
-    def cost_function(m):
-        cost_all=0
-        for t in m.T:
-            gen_cost=sum(m.a_factor[g]*(m.gen_output[g,t]**2)+m.b_factor[g]*m.gen_output[g,t]+m.c_factor[g] for g in m.G)
-            battery_cost=m.battery_energy_change[t]**2*m.battery_degradation_factor
-            if value(m.grid_energy_import[t])>=0:
-                grid_cost=m.grid_energy_import[t]*price_data[t]
-            else: 
-                grid_cost=m.grid_energy_import[t]*price_data[t]*m.sell_coefficient
-            cost=(gen_cost+battery_cost+grid_cost)
-            cost_all+=cost
-        return cost_all
-    m.obj=Objective(rule=cost_function,sense=minimize)
-
-    ## solve the model
-    # m.pprint() 
-
-    opt=SolverFactory('ipopt')
-    # opt.options['print_level']=12
-    opt.options['max_iter']=1000000
-    # opt.options['output_file']='./my_ipopt_log.txt'
-    # results=opt.solve(m,strategy='OA',mip_solver='glpk',nlp_solver='ipopt',tee=True)
-    result=opt.solve(m)
-    # m.display()
-    # m.pprint()
-    # print(m.obj())
-
-    output_record={'pv':[],'price':[],'load':[],'netload':[],'soc':[],'battery_energy_change':[],'grid_import':[],'gen':[],'gen1':[],'gen2':[],'gen3':[],'step_cost':[]}
-    for t in m.T.data():
-        # one step cost 
-        gen_cost=sum(m.a_factor[g]*(m.gen_output[g,t]**2)+m.b_factor[g]*m.gen_output[g,t]+m.c_factor[g] for g in m.G)
-        battery_cost=m.battery_energy_change[t]**2*m.battery_degradation_factor
-        if value(m.grid_energy_import[t])>=0:
-            grid_cost=m.grid_energy_import[t]*price_data[t]
-        else: 
-            grid_cost=m.grid_energy_import[t]*price_data[t]*m.sell_coefficient
-        cost=(gen_cost+battery_cost+grid_cost)
-        #output data
-        output_record['pv'].append(pv_data[t])
-        output_record['price'].append(price_data[t])
-        output_record['load'].append(load_data[t])
-        output_record['netload'].append(load_data[t]-pv_data[t])
-        output_record['soc'].append(m.soc[t].value)
-        output_record['battery_energy_change'].append(m.battery_energy_change[t].value)
-        output_record['grid_import'].append(m.grid_energy_import[t].value)
-        output_record['step_cost'].append(value(cost))
-    for g in m.G.data():
-        for t in m.T.data():
-            output_record['gen'].append(m.gen_output[g,t].value)
-    output_record['gen1']=output_record['gen'][0:24]
-    output_record['gen2']=output_record['gen'][24:48]
-    output_record['gen3']=output_record['gen'][48::]
-    del output_record['gen']
-    # print(output_record['step_cost'])
-    output_record_df=pd.DataFrame.from_dict(output_record)
     return output_record_df
 class Arguments:
     '''revise here for our own purpose'''
@@ -344,8 +166,6 @@ def test_one_episode(env, act, device):
     record_init_info=[]#should include month,day,time,intial soc,initial
     env.TRAIN = False
     state=env.reset()
-    # print(state[2])
-    # current is always 10-26, soc 0.639
     record_init_info.append([env.month,env.day,env.current_time,env.battery.current_capacity])
     print(f'current testing month is {env.month}, day is {env.day},initial_soc is {env.battery.current_capacity}' )
     for i in range(24):
@@ -356,14 +176,12 @@ def test_one_episode(env, act, device):
         state,next_state,reward, done = env.step(action)
         
         record_system_info.append([state[0],state[1],state[3],action,real_action,env.battery.SOC(),env.battery.energy_change,next_state[4],next_state[5],next_state[6],env.unbalance,env.operation_cost])
-        # real_unbalance=sum(env.current_output)-env.netload[i]
+
         record_state.append(state)
         record_action.append(real_action)
         record_reward.append(reward)
         record_output.append(env.current_output)
-        # record_cost.append(env.real_cost)
         record_unbalance.append(env.unbalance)
-        # record_real_unbalance.append(real_unbalance)
         state=next_state
     record_system_info[-1][7:10]=[env.final_step_outputs[0],env.final_step_outputs[1],env.final_step_outputs[2]]
     ## add information of last step soc

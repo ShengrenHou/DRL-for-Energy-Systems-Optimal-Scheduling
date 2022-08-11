@@ -2,35 +2,6 @@ import torch
 import torch.nn as nn 
 import numpy as np 
 
-class QNet(nn.Module):  # nn.Module is a standard PyTorch Network
-    def __init__(self, mid_dim, state_dim, action_dim):
-        super().__init__()
-        self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, action_dim))
-
-    def forward(self, state):
-        return self.net(state)  # Q values for multiple actions
-
-
-class QNetTwin(nn.Module):  # Double DQN
-    def __init__(self, mid_dim, state_dim, action_dim):
-        super().__init__()
-        self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                       nn.Linear(mid_dim, mid_dim), nn.ReLU())
-        self.net_q1 = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                    nn.Linear(mid_dim, action_dim))  # q1 value
-        self.net_q2 = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                    nn.Linear(mid_dim, action_dim))  # q2 value
-
-    def forward(self, state):
-        tmp = self.net_state(state)
-        return self.net_q1(tmp)  # one group of Q values
-
-    def get_q1_q2(self, state):
-        tmp = self.net_state(state)
-        return self.net_q1(tmp), self.net_q2(tmp)  # two groups of Q values
 
 
 class Actor(nn.Module):
@@ -123,37 +94,6 @@ class ActorPPO(nn.Module):
     def get_old_logprob(self, _action, noise):  # noise = action - a_noise
         delta = noise.pow(2) * 0.5
         return -(self.a_std_log + self.sqrt_2pi_log + delta).sum(1)  # old_logprob
-
-
-class ActorDiscretePPO(nn.Module):
-    def __init__(self, mid_dim, state_dim, action_dim):
-        super().__init__()
-        self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.Hardswish(),
-                                 nn.Linear(mid_dim, action_dim))
-        self.action_dim = action_dim
-        self.soft_max = nn.Softmax(dim=-1)
-        self.Categorical = torch.distributions.Categorical
-
-    def forward(self, state):
-        return self.net(state)  # action_prob without softmax
-
-    def get_action(self, state):
-        a_prob = self.soft_max(self.net(state))
-        # action = Categorical(a_prob).sample()
-        samples_2d = torch.multinomial(a_prob, num_samples=1, replacement=True)
-        action = samples_2d.reshape(state.size(0))
-        return action, a_prob
-
-    def get_logprob_entropy(self, state, a_int):
-        a_prob = self.soft_max(self.net(state))
-        dist = self.Categorical(a_prob)
-        return dist.log_prob(a_int), dist.entropy().mean()
-
-    def get_old_logprob(self, a_int, a_prob):
-        dist = self.Categorical(a_prob)
-        return dist.log_prob(a_int)
 
 
 class Critic(nn.Module):

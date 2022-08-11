@@ -50,14 +50,13 @@ if __name__=='__main__':
         gamma=args.gamma
         batch_size=args.batch_size# how much data should be used to update net
         target_step=args.target_step#how manysteps of one episode should stop
-        # reward_scale=args.reward_scale# here we use it as 1# we dont need this in our model
+
         repeat_times=args.repeat_times# how many times should update for one batch size data
-        # if_allow_break = args.if_allow_break
+
         soft_update_tau = args.soft_update_tau
-        # get the first experience from
+
         agent.state=env.reset()
-        # trajectory=agent.explore_env(env,target_step)
-        # update_buffer(trajectory)
+
         '''collect data and train and update network'''
         num_episode=args.num_episode
         '''here record real unbalance'''
@@ -128,20 +127,13 @@ if __name__=='__main__':
         print(initial_soc)     
         base_result=optimization_base_result(env,month,day,initial_soc)
     if args.plot_on:
-        from plotDRL import PlotArgs,make_dir,plot_reward,plot_evaluation_information,plot_loss,plot_optimization_result
+        from plotDRL import PlotArgs,make_dir,plot_evaluation_information,plot_optimization_result
         plot_args=PlotArgs()
         plot_args.feature_change='2000Episode_100exchange_50penalty'
-        args.cwd=agent_name#change
+        args.cwd=agent_name
         plot_dir=make_dir(args.cwd,plot_args.feature_change)
-        # plot_loss(args.cwd+'/'+'loss_data.pkl',plot_dir)#loss_record_path
-        # plot_reward(args.cwd+'/'+'reward_data.pkl',plot_dir)
         plot_optimization_result(base_result,plot_dir)
         plot_evaluation_information(args.cwd+'/'+'test_data.pkl',plot_dir)
-        if args.plot_shadow_on:
-            from plotDRL import plot_shadow_loss
-            plot_shadow_loss(plot_dir)
-
-
     '''compare the different cost get from pyomo and SAC'''
     ration=sum(eval_data['operation_cost'])/sum(base_result['step_cost'])
     print(sum(eval_data['operation_cost']))

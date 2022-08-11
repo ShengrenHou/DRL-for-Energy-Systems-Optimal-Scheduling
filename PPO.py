@@ -18,10 +18,7 @@ from random_generator_battery import ESSEnv
 
 os.environ['KMP_DUPLICATE_LIB_OK']='TRUE'
 script_name=os.path.basename(__file__)
-'''tricks used in this script 
-1. rescale of reward 
-2. normalization of advantage
-3. clip'''
+
 #after adding layer normalization, it doesn't work 
 class ActorPPO(nn.Module):
     def __init__(self, mid_dim, state_dim, action_dim,layer_norm=False):
@@ -52,7 +49,6 @@ class ActorPPO(nn.Module):
         a_std = self.a_logstd.exp()
 
         noise = torch.randn_like(a_avg)
-        # Returns a tensor with the same size as input that is filled with random numbers from a normal distribution with mean 0 and variance 1.
         action = a_avg + noise * a_std
         return action, noise
 
@@ -244,7 +240,6 @@ class Arguments:
         self.num_threads = 8  # cpu_num for evaluate model, torch.set_num_threads(self.num_threads)
 
         '''Arguments for training'''
-        ## add for training by shengren 
         self.num_episode=2000 # to control the train episodes for PPO
         self.gamma = 0.995  # discount factor of future rewards
         self.learning_rate = 2e-4
@@ -258,8 +253,6 @@ class Arguments:
         self.if_per_or_gae = False  # GAE for on-policy sparse reward: Generalized Advantage Estimation.
 
         '''Arguments for evaluate'''
-        # self.eval_gap = 2 ** 6  # evaluate the agent per eval_gap seconds
-        # self.eval_times = 1  # number of times that get episode return in first
         self.random_seed = 1234  # initialize random seed in self.init_before_training()
         self.random_seed_list = [1234, 2234, 3234, 4234, 5234]
         self.train=True
@@ -327,12 +320,9 @@ if __name__=='__main__':
         gamma=args.gamma
         batch_size=args.batch_size# how much data should be used to update net
         target_step=args.target_step#how manysteps of one episode should stop
-        # reward_scale=args.reward_scale# here we use it as 1# we dont need this in our model
         repeat_times=args.repeat_times# how many times should update for one batch size data
-        # if_allow_break = args.if_allow_break
         soft_update_tau = args.soft_update_tau
         agent.state = env.reset()
-        # collect data and update buffer of PPO
         '''init buffer'''
         buffer = list()
         '''init training parameters'''
@@ -392,16 +382,13 @@ if __name__=='__main__':
         print(initial_soc)     
         base_result=optimization_base_result(env,month,day,initial_soc)
     if args.plot_on:
-        from plotDRL import PlotArgs,make_dir,plot_reward,plot_evaluation_information,plot_loss,plot_optimization_result
+        from plotDRL import PlotArgs,make_dir,plot_evaluation_information,plot_optimization_result
         plot_args=PlotArgs()
-        plot_args.feature_change='2000Episode_100exchange_50penalty'
+        plot_args.feature_change=''
         args.cwd=agent_name#change
         plot_dir=make_dir(args.cwd,plot_args.feature_change)
-        # plot_loss(args.cwd+'/'+'loss_data.pkl',plot_dir)#loss_record_path
-        # plot_reward(args.cwd+'/'+'reward_data.pkl',plot_dir)
         plot_optimization_result(base_result,plot_dir)
         plot_evaluation_information(args.cwd+'/'+'test_data.pkl',plot_dir)
-
     '''compare the different cost get from pyomo and SAC'''
     ration=sum(eval_data['operation_cost'])/sum(base_result['step_cost'])
     print(sum(eval_data['operation_cost']))

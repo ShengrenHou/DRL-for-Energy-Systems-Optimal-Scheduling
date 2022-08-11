@@ -130,20 +130,13 @@ if __name__=='__main__':
         print(initial_soc)     
         base_result=optimization_base_result(env,month,day,initial_soc)
     if args.plot_on:
-        # from plotDRL import PlotArgs,make_dir,plot_reward,plot_evaluation_information,plot_loss,plot_pyomo_information
-        from plotDRL import PlotArgs,make_dir,plot_reward,plot_evaluation_information,plot_loss,plot_optimization_result
+        from plotDRL import PlotArgs,make_dir,plot_evaluation_information,plot_optimization_result
         plot_args=PlotArgs()
-        plot_args.feature_change='2000Episode_100exchange_50penalty'
-        args.cwd=agent_name#change
+        plot_args.feature_change=''
+        args.cwd=agent_name
         plot_dir=make_dir(args.cwd,plot_args.feature_change)
-        # plot_loss(args.cwd+'/'+'loss_data.pkl',plot_dir)#loss_record_path
-        # plot_reward(args.cwd+'/'+'reward_data.pkl',plot_dir)
         plot_optimization_result(base_result,plot_dir)
         plot_evaluation_information(args.cwd+'/'+'test_data.pkl',plot_dir)
-        if args.plot_shadow_on:
-            from plotDRL import plot_shadow_loss
-            plot_shadow_loss(plot_dir)
-
     '''compare the different cost get from pyomo and SAC'''
     ration=sum(eval_data['operation_cost'])/sum(base_result['step_cost'])
     print(sum(eval_data['operation_cost']))

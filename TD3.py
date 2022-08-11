@@ -34,12 +34,11 @@ if __name__=='__main__':
     if bool(args.random_seed_list):
         for seed in args.random_seed_list:
             args.random_seed = seed
-            # set different seed
+
             args.agent = AgentTD3()
             agent_name = f'{args.agent.__class__.__name__}'
             args.agent.cri_target = True
-            args.env = ESSEnv()
-            # creat lists of lists/or creat a long list?
+
 
             args.init_before_training(if_main=True)
             '''init agent and environment'''
@@ -55,14 +54,13 @@ if __name__=='__main__':
             gamma = args.gamma
             batch_size = args.batch_size  # how much data should be used to update net
             target_step = args.target_step  # how manysteps of one episode should stop
-            # reward_scale=args.reward_scale# here we use it as 1# we dont need this in our model
+
             repeat_times = args.repeat_times  # how many times should update for one batch size data
-            # if_allow_break = args.if_allow_break
+
             soft_update_tau = args.soft_update_tau
-            # get the first experience from
+
             agent.state = env.reset()
-            # trajectory=agent.explore_env(env,target_step)
-            # update_buffer(trajectory)
+
             '''collect data and train and update network'''
             num_episode = args.num_episode
 
@@ -132,22 +130,14 @@ if __name__=='__main__':
         base_result = optimization_base_result(env, month, day, initial_soc)
     if args.plot_on:
         # from plotDRL import PlotArgs,make_dir,plot_reward,plot_evaluation_information,plot_loss,plot_pyomo_information
-        from plotDRL import PlotArgs, make_dir, plot_reward, plot_evaluation_information, plot_loss, \
-            plot_optimization_result,plot_shadow_loss
-
+        from plotDRL import PlotArgs, make_dir,plot_evaluation_information,\
+            plot_optimization_result
         plot_args = PlotArgs()
-        plot_args.feature_change = '2000Episode_100exchange_50penalty'
+        plot_args.feature_change = ''
         args.cwd = agent_name  # change
         plot_dir = make_dir(args.cwd, plot_args.feature_change)
-        # plot_loss(args.cwd + '/' + 'loss_data.pkl', plot_dir)  # loss_record_path
-        # plot_reward(args.cwd + '/' + 'reward_data.pkl', plot_dir)
         plot_optimization_result(base_result, plot_dir)
         plot_evaluation_information(args.cwd + '/' + 'test_data.pkl', plot_dir)
-        if args.plot_shadow_on:
-            from plotDRL import plot_shadow_loss
-            plot_shadow_loss(plot_dir)
-
-
     '''compare the different cost get from pyomo and SAC'''
     ration = sum(eval_data['operation_cost']) / sum(base_result['step_cost'])
     print(sum(eval_data['operation_cost']))
