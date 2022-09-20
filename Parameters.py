@@ -8,26 +8,7 @@ battery_parameters={
 'min_soc':0.2,
 'initial_capacity':0.4}
 
-# redesign parameters inside the generator
-
-# dg_parameters={
-# 'gen_1':{'a':0.0161
-# ,'b': 5.88 
-# ,'c':100
-# ,'d': 0.03,'e':4.2,'f': 0.031,'power_output_max':150,'power_output_min':0,'heat_output_max':None,'heat_output_min':None,\
-# 'ramping_up':100,'ramping_down':100,'min_up':2,'min_down':1},
-
-# 'gen_2':{'a':0.00515
-# ,'b': 12.9
-# ,'c': 635.2
-# ,'d': 0.03,'e':4.2,'f': 0.031,'power_output_max':375,'power_output_min':0,'heat_output_max':None,'heat_output_min':None,\
-#     'ramping_up':100,'ramping_down':100,'min_up':2,'min_down':1},
-
-# 'gen_3':{'a':0.00421
-# ,'b': 12.5 
-# ,'c': 913.4
-# ,'d': 0.03,'e':4.2,'f': 0.031,'power_output_max':500,'power_output_min':0,'heat_output_max':None,'heat_output_min':None,\
-#     'ramping_up':200,'ramping_down':200,'min_up':2,'min_down':1}}
+#
 
 dg_parameters={
 'gen_1':{'a':0.0034
@@ -50,4 +31,3 @@ dg_parameters={
 
 
 
-'''Another Parameter for DGs , quradic function and cost'''
