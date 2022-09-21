@@ -14,7 +14,7 @@
 # Dependencies
 This code requires installation of the following libraries: ```PYOMO```,```pandas 1.1.4```, ```numpy 1.20.1```, ```matplotlib 3.3.4```, ```pytorch 1.11.0```,  ```math```, you can find more information [at this page](https://arxiv.org/abs/2208.00728).
 # Recommended citation
-A preprint is available, and you can check this paper for more details  [Link of the paper](https://github.com/shengrenhou/drl-for-energy-systems-optimal-scheduling).
+A preprint is available, and you can check this paper for more details  [Link of the paper](https://arxiv.org/abs/2208.00728).
 * Paper authors: Hou Shengren, Edgar Mauricio Salazar, Pedro P. Vergara, Peter Palensky
 * Accepted for publication at IEEE PES ISGT 2022
 * If you use (parts of) this code, please cite the preprint or published paper
