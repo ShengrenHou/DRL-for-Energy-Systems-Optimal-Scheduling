@@ -18,5 +18,6 @@ A preprint is available, and you can check this paper for more details  [Link of
 * Paper authors: Hou Shengren, Edgar Mauricio Salazar, Pedro P. Vergara, Peter Palensky
 * Accepted for publication at IEEE PES ISGT 2022
 * If you use (parts of) this code, please cite the preprint or published paper
-
+## Additional Information 
+* Sorry some people reported the PPO not works on my environment. I guess I uploaded the wrong version code. I will fix it when I am free. Right now, please use DDPG and TD3 first. If you have any other questions on code, please submit an issue. 
 
